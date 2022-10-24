@@ -30,6 +30,7 @@ const typeDefs = gql`
   type Query {
     myTaskLists: [TaskList!]!
     getTaskList(id: ID!): TaskList
+    myCompleteTaskLists: [TaskList!]!
   }
 
   type Mutation {
@@ -104,6 +105,16 @@ const resolvers = {
         .find({ userIds: user._id })
         .toArray();
     },
+    myCompleteTaskLists: async (_, __, { db, user }) => {
+      if (!user) {
+        throw new Error("Authentication Error. Please sign in");
+      }
+
+      return await db
+        .collection("TaskList")
+        .aggregate([{ $match: { userIds: user._id } }])
+        .toArray();
+    },
 
     getTaskList: async (_, { id }, { db, user }) => {
       if (!user) {
@@ -156,7 +167,7 @@ const resolvers = {
 
       const newTaskList = {
         title,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toLocaleDateString(),
         userIds: [user._id],
       };
       const result = await db.collection("TaskList").insert(newTaskList);
@@ -283,7 +294,7 @@ const resolvers = {
         return 0;
       }
 
-      return (100 * completed.length) / todos.length;
+      return Math.ceil((100 * completed.length) / todos.length);
     },
 
     users: async ({ userIds }, _, { db }) =>
